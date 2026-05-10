@@ -162,4 +162,7 @@ send_email() {
     return 1
 }
 
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && send_email "$@"
+# Only auto-run if executed directly, not sourced
+if [[ "${BASH_SOURCE[0]:-}" == "${0:-}" ]]; then
+    send_email "$@"
+fi

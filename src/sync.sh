@@ -61,7 +61,7 @@ EOF
     local start_time end_time
     start_time=$(date +%s)
     
-    if mbsync -c "$mbsyncrc" $sync_flags "pottersquill-${folder,,}" 2>/tmp/mbsync_err; then
+    if mbsync -c "$mbsyncrc" $sync_flags "pottersquill-inbox" 2>/tmp/mbsync_err; then
         end_time=$(date +%s)
         local duration=$((end_time - start_time))
         
