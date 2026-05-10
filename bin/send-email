@@ -1,0 +1,78 @@
+#!/bin/bash
+# CLI wrapper for send.sh with flag parsing
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/../src/config.sh"
+source "${SCRIPT_DIR}/../src/validate.sh"
+source "${SCRIPT_DIR}/../src/audit.sh"
+source "${SCRIPT_DIR}/../src/send.sh"
+
+# Parse flags
+to=""
+subject=""
+body=""
+from="${SMTP_USER}"
+attachments=()
+cc=()
+bcc=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --to)
+            to="$2"
+            shift 2
+            ;;
+        --subject)
+            subject="$2"
+            shift 2
+            ;;
+        --body)
+            body="$2"
+            shift 2
+            ;;
+        --from)
+            from="$2"
+            shift 2
+            ;;
+        --attachment|-a)
+            attachments+=("$2")
+            shift 2
+            ;;
+        --cc)
+            cc+=("$2")
+            shift 2
+            ;;
+        --bcc)
+            bcc+=("$2")
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# Validate required args
+[[ -z "$to" ]] && { echo "ERROR: --to required" >&2; exit 1; }
+[[ -z "$subject" ]] && { echo "ERROR: --subject required" >&2; exit 1; }
+[[ -z "$body" ]] && { echo "ERROR: --body required" >&2; exit 1; }
+
+# Build positional args for send_email
+cmd_args=("$to" "$subject" "$body" "$from")
+
+for att in "${attachments[@]}"; do
+    cmd_args+=("--attachment" "$att")
+done
+
+for c in "${cc[@]}"; do
+    cmd_args+=("--cc" "$c")
+done
+
+for b in "${bcc[@]}"; do
+    cmd_args+=("--bcc" "$b")
+done
+
+send_email "${cmd_args[@]}"
