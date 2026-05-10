@@ -3,19 +3,65 @@
 
 set -euo pipefail
 
+# Parse flags for send command
+parse_send_flags() {
+    local to="" subject="" body="" attachment=""
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --to)
+                to="${2:-}"
+                shift 2
+                ;;
+            --subject)
+                subject="${2:-}"
+                shift 2
+                ;;
+            --body)
+                body="${2:-}"
+                shift 2
+                ;;
+            --attachment)
+                attachment="${2:-}"
+                shift 2
+                ;;
+            --*)
+                echo "Unknown flag: $1" >&2
+                exit 1
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    
+    # Output positional args
+    printf '%s\t%s\t%s\t%s\n' "$to" "$subject" "$body" "$attachment"
+}
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="${SCRIPT_DIR}/src:${PATH}"
-
-# Load config
-source "${SCRIPT_DIR}/src/config.sh" 2>/dev/null || true
 
 command="${1:-}"
 shift || true
 
 case "$command" in
     send)
-        source "${SCRIPT_DIR}/src/send.sh"
-        send_email "$@"
+        # Check if using new flag syntax
+        if [[ "${1:-}" == --* ]]; then
+            # Parse flags and convert to positional args
+            read -r to subject body attachment <<< "$(parse_send_flags "$@")"
+            source "${SCRIPT_DIR}/src/send.sh"
+            if [[ -n "$attachment" ]]; then
+                send_email "$to" "$subject" "$body" "$attachment"
+            else
+                send_email "$to" "$subject" "$body"
+            fi
+        else
+            # Legacy positional args
+            source "${SCRIPT_DIR}/src/send.sh"
+            send_email "$@"
+        fi
         ;;
     sync)
         source "${SCRIPT_DIR}/src/sync.sh"
@@ -37,11 +83,11 @@ case "$command" in
         cat "${AUDIT_LOG:-${HOME}/.config/openclaw-mail-adapter/audit.log}" | tail -"${1:-20}"
         ;;
     status)
-        echo "SMTP: ${SMTP_HOST:-not configured}:${SMTP_PORT:-587}"
-        echo "IMAP: ${IMAP_HOST:-not configured}:${IMAP_PORT:-993}"
-        echo "Maildir: ${MAILDIR_PATH:-not configured}"
-        echo "Test mode: ${TEST_MODE:-false}"
-        echo "Dry run: ${DRY_RUN:-false}"
+        echo "SMTP: ${SMTP_HOST}:${SMTP_PORT}"
+        echo "IMAP: ${IMAP_HOST}:${IMAP_PORT}"
+        echo "Maildir: ${MAILDIR_PATH}"
+        echo "Test mode: ${TEST_MODE}"
+        echo "Dry run: ${DRY_RUN}"
         ;;
     *)
         echo "Usage: mail-adapter {send|sync|search|read|test|audit|status} [options]"
