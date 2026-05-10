@@ -3,7 +3,16 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Handle both direct execution and sourcing
+if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+elif [[ -n "${0:-}" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+else
+    # Fallback: try to find scripts relative to PATH
+    SCRIPT_DIR="$(dirname "$(which send-email 2>/dev/null || echo '.')")"
+fi
+
 source "${SCRIPT_DIR}/config.sh"
 source "${SCRIPT_DIR}/validate.sh"
 source "${SCRIPT_DIR}/audit.sh"
